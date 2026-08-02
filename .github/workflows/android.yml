@@ -1,35 +1,34 @@
 name: Build open.mp for Android ARM64
 
 on:
-  workflow_dispatch: # Supaya bisa kamu klik tombol "Run workflow" kapan saja secara manual
+  workflow_dispatch: # Agar bisa diklik manual "Run workflow"
 
 jobs:
   build-android:
     runs-on: ubuntu-latest
 
     steps:
-    # 1. Checkout repository beserta submodules (PENTING!)
+    # 1. Checkout repository beserta submodules-nya
     - name: Checkout Code
       uses: actions/checkout@v4
       with:
         submodules: recursive
 
     # 2. Install Tools Kompilasi
-    - name: Install Build Tools & Python
+    - name: Install Build Tools
       run: |
         sudo apt-get update
         sudo apt-get install -y cmake ninja-build python3-pip
-        pip3 install conan
 
-    # 3. Setup Android NDK
+    # 3. Setup Android NDK (Sudah diperbaiki)
     - name: Setup Android NDK
-      uses: nkeywal/setup-ndk@v1
+      uses: nttld/setup-ndk@v1
       id: setup-ndk
       with:
         ndk-version: r25c
 
-    # 4. Generate & Compile Project via CMake untuk Android ARM64
-    - name: Configure and Build
+    # 4. Generate Build Files dengan CMake
+    - name: Configure CMake
       run: |
         mkdir build_android
         cd build_android
@@ -39,9 +38,14 @@ jobs:
           -DANDROID_PLATFORM=android-24 \
           -DCMAKE_BUILD_TYPE=Release \
           ..
+
+    # 5. Kompilasi Server
+    - name: Build Server
+      run: |
+        cd build_android
         ninja
 
-    # 5. Upload File Hasil Kompilasi ke GitHub
+    # 6. Upload Hasil Build
     - name: Upload Artifact
       uses: actions/upload-artifact@v4
       with:
