@@ -1,7 +1,7 @@
 name: Build open.mp for Android ARM64
 
 on:
-  workflow_dispatch: # Agar bisa diklik manual "Run workflow"
+  workflow_dispatch:
 
 jobs:
   build-android:
@@ -14,13 +14,17 @@ jobs:
       with:
         submodules: recursive
 
-    # 2. Install Tools Kompilasi
-    - name: Install Build Tools
+    # 2. Install Tools & Conan 2 (Paket Manager C++)
+    - name: Install Build Tools & Conan 2
       run: |
         sudo apt-get update
         sudo apt-get install -y cmake ninja-build python3-pip
+        pip3 install "conan>=2.0" --break-system-packages || pip3 install "conan>=2.0"
+        echo "$HOME/.local/bin" >> $GITHUB_PATH
+        export PATH="$HOME/.local/bin:$PATH"
+        conan profile detect --force
 
-    # 3. Setup Android NDK (Sudah diperbaiki)
+    # 3. Setup Android NDK
     - name: Setup Android NDK
       uses: nttld/setup-ndk@v1
       id: setup-ndk
@@ -30,6 +34,7 @@ jobs:
     # 4. Generate Build Files dengan CMake
     - name: Configure CMake
       run: |
+        export PATH="$HOME/.local/bin:$PATH"
         mkdir build_android
         cd build_android
         cmake -G Ninja \
@@ -42,6 +47,7 @@ jobs:
     # 5. Kompilasi Server
     - name: Build Server
       run: |
+        export PATH="$HOME/.local/bin:$PATH"
         cd build_android
         ninja
 
