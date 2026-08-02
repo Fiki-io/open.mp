@@ -37,7 +37,32 @@ jobs:
         mkdir -p ~/.conan2
         echo "tools.android:ndk_path=${{ steps.setup-ndk.outputs.ndk-path }}" >> ~/.conan2/global.conf
 
-    # 5. Generate Build Files dengan CMake (Ditambahkan Flag Mode BOTH)
+    # 5. Patch conan-omp.cmake agar menyuntikkan API Level & ARM64
+    - name: Patch Conan OMP for Android
+      run: |
+        python3 -c "
+        import os
+        filepath = 'lib/cmake-conan/conan-omp.cmake'
+        if os.path.exists(filepath):
+            with open(filepath, 'r') as f:
+                content = f.read()
+            patch = '''
+            if(EXISTS \"\${CONAN_HOST_PROFILE}\")
+                file(READ \"\${CONAN_HOST_PROFILE}\" _PROF_CONTENT)
+                string(REPLACE \"arch=x86\" \"arch=armv8\" _PROF_CONTENT \"\${_PROF_CONTENT}\")
+                if(NOT _PROF_CONTENT MATCHES \"os.api_level\")
+                    string(REPLACE \"os=Android\" \"os=Android\\nos.api_level=24\" _PROF_CONTENT \"\${_PROF_CONTENT}\")
+                endif()
+                file(WRITE \"\${CONAN_HOST_PROFILE}\" \"\${_PROF_CONTENT}\")
+            endif()
+            '''
+            content = content.replace('execute_process(COMMAND \${CONAN_CMD} install', patch + '\nexecute_process(COMMAND \${CONAN_CMD} install')
+            with open(filepath, 'w') as f:
+                f.write(content)
+            print('Patch conan-omp.cmake successfully applied!')
+        "
+
+    # 6. Generate Build Files dengan CMake
     - name: Configure CMake
       run: |
         export PATH="$HOME/.local/bin:$PATH"
@@ -55,14 +80,14 @@ jobs:
           -DCMAKE_BUILD_TYPE=Release \
           ..
 
-    # 6. Kompilasi Server
+    # 7. Kompilasi Server
     - name: Build Server
       run: |
         export PATH="$HOME/.local/bin:$PATH"
         cd build_android
         ninja
 
-    # 7. Upload Hasil Build
+    # 8. Upload Hasil Build
     - name: Upload Artifact
       uses: actions/upload-artifact@v4
       with:
